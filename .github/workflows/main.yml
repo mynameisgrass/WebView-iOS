@@ -12,36 +12,43 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: 🪄 Magic - Rename App & Change Icon
+      - name: 🪄 Magic - Rename App & Create Icons
         run: |
           # 1. CHANGE APP NAME TO "VNMAP"
-          # We use 'plutil' to edit the settings file directly
           PLIST="WebView-iOS/Info.plist"
           plutil -replace CFBundleDisplayName -string "VNMAP" "$PLIST"
           plutil -replace CFBundleName -string "VNMAP" "$PLIST"
 
-          # 2. REPLACE ICON (The Smart Way)
-          # This script finds the app's icon folder, looks at the size of every 
-          # existing icon, and resizes YOUR icon.png to match perfectly.
-          
-          if [ -f "icon.png" ]; then
-            echo "Found icon.png! Overwriting app icons..."
-            ICON_SET=$(find . -type d -name "AppIcon.appiconset" | head -n 1)
+          # 2. GENERATE ICONS (The Robust Way)
+          ICON_SOURCE="$PWD/icon.png"
+          APP_ICON_DIR="WebView-iOS/Images.xcassets/AppIcon.appiconset"
+
+          if [ -f "$ICON_SOURCE" ]; then
+            echo "Found icon.png! Generating all required icon sizes..."
             
-            # Loop through every PNG in the icon folder
-            for f in "$ICON_SET"/*.png; do
-               # Get the width of the original file
-               WIDTH=$(sips -g pixelWidth "$f" | tail -n1 | awk '{print $2}')
-               # Resize your icon.png to that width and overwrite the file
-               sips -z $WIDTH $WIDTH icon.png --out "$f"
+            # Go into the icon folder
+            cd "$APP_ICON_DIR"
+            
+            # Read the Contents.json file to see what files Xcode expects
+            # and generate each one from your icon.png
+            jq -r '.images[] | select(.filename) | "\(.filename) \(.size) \(.scale)"' Contents.json | while read filename size scale; do
+              # Clean up the numbers (e.g., turn "60x60" into "60", "2x" into "2")
+              scale_clean=$(echo $scale | tr -d 'x')
+              size_clean=$(echo $size | cut -d'x' -f1)
+              
+              # Calculate the pixel size (Size * Scale)
+              target_width=$(awk "BEGIN {print int($size_clean * $scale_clean)}")
+              
+              echo "Creating $filename ($target_width px)..."
+              # Resize your image to this exact size
+              sips -z $target_width $target_width "$ICON_SOURCE" --out "$filename"
             done
           else
-            echo "WARNING: icon.png not found. Using default icon."
+             echo "WARNING: icon.png not found in the root folder."
           fi
 
       - name: Build App (Unsigned)
         run: |
-          # Build with the new name and icon
           xcodebuild build \
             -scheme "WebView-iOS" \
             -configuration Release \
@@ -55,9 +62,7 @@ jobs:
       - name: Package IPA Manually
         run: |
           mkdir Payload
-          # Move the app into the Payload folder
           mv build/Build/Products/Release-iphoneos/*.app Payload/
-          # Zip it into an IPA
           zip -r "VNMAP.ipa" Payload
 
       - name: Upload IPA
