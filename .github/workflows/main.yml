@@ -12,11 +12,15 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: List Available Schemes
+        run: xcodebuild -list
+        # This step will print the real scheme name in the logs if the next step fails.
+
       - name: Build App (Unsigned)
         run: |
-          # Build the app with code signing completely disabled
+          # Build with the corrected scheme name "WebView-iOS"
           xcodebuild build \
-            -scheme "WebView Basic App" \
+            -scheme "WebView-iOS" \
             -configuration Release \
             -sdk iphoneos \
             CODE_SIGNING_ALLOWED=NO \
@@ -26,15 +30,13 @@ jobs:
 
       - name: Package IPA Manually
         run: |
-          # Create the folder structure Apple expects
           mkdir Payload
-          # Find the built .app file and move it to Payload
+          # We use a wildcard (*) here so it finds the app regardless of the exact name
           mv build/Build/Products/Release-iphoneos/*.app Payload/
-          # Zip it up into an .ipa file
-          zip -r "vnmap.ipa" Payload
+          zip -r "Safeschool.ipa" Payload
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: Unsigned-IPA
-          path: MyWebViewApp.ipa
+          name: Safeschool-IPA
+          path: Safeschool.ipa
