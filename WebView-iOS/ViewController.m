@@ -2,7 +2,7 @@
 
 #import "ViewController.h"
 
-#define WEB_URL @"https://www.google.com"   // change this url to whatever you want
+#define WEB_URL @"https://vnmap-safeschool.net"   // change this url to whatever you want
 
 @interface ViewController ()
 @property (strong, nonatomic) WKWebView *webView;
