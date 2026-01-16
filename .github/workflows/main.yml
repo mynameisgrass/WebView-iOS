@@ -1,0 +1,40 @@
+name: Build Unsigned IPA
+on:
+  push:
+    branches: [ "master", "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Build App (Unsigned)
+        run: |
+          # Build the app with code signing completely disabled
+          xcodebuild build \
+            -scheme "WebView Basic App" \
+            -configuration Release \
+            -sdk iphoneos \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            -derivedDataPath build
+
+      - name: Package IPA Manually
+        run: |
+          # Create the folder structure Apple expects
+          mkdir Payload
+          # Find the built .app file and move it to Payload
+          mv build/Build/Products/Release-iphoneos/*.app Payload/
+          # Zip it up into an .ipa file
+          zip -r "vnmap.ipa" Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Unsigned-IPA
+          path: MyWebViewApp.ipa
