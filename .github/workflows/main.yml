@@ -12,13 +12,9 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: List Available Schemes
-        run: xcodebuild -list
-        # This step will print the real scheme name in the logs if the next step fails.
-
       - name: Build App (Unsigned)
         run: |
-          # Build with the corrected scheme name "WebView-iOS"
+          # We force the iOS version to 13.0 to fix the "libarclite" error
           xcodebuild build \
             -scheme "WebView-iOS" \
             -configuration Release \
@@ -26,13 +22,15 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
+            IPHONEOS_DEPLOYMENT_TARGET=13.0 \
             -derivedDataPath build
 
       - name: Package IPA Manually
         run: |
           mkdir Payload
-          # We use a wildcard (*) here so it finds the app regardless of the exact name
+          # Move the app into the Payload folder
           mv build/Build/Products/Release-iphoneos/*.app Payload/
+          # Zip it into an IPA
           zip -r "Safeschool.ipa" Payload
 
       - name: Upload IPA
