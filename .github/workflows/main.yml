@@ -1,4 +1,4 @@
-name: Build Unsigned IPA
+name: Build VNMAP
 on:
   push:
     branches: [ "master", "main" ]
@@ -12,9 +12,36 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: 🪄 Magic - Rename App & Change Icon
+        run: |
+          # 1. CHANGE APP NAME TO "VNMAP"
+          # We use 'plutil' to edit the settings file directly
+          PLIST="WebView-iOS/Info.plist"
+          plutil -replace CFBundleDisplayName -string "VNMAP" "$PLIST"
+          plutil -replace CFBundleName -string "VNMAP" "$PLIST"
+
+          # 2. REPLACE ICON (The Smart Way)
+          # This script finds the app's icon folder, looks at the size of every 
+          # existing icon, and resizes YOUR icon.png to match perfectly.
+          
+          if [ -f "icon.png" ]; then
+            echo "Found icon.png! Overwriting app icons..."
+            ICON_SET=$(find . -type d -name "AppIcon.appiconset" | head -n 1)
+            
+            # Loop through every PNG in the icon folder
+            for f in "$ICON_SET"/*.png; do
+               # Get the width of the original file
+               WIDTH=$(sips -g pixelWidth "$f" | tail -n1 | awk '{print $2}')
+               # Resize your icon.png to that width and overwrite the file
+               sips -z $WIDTH $WIDTH icon.png --out "$f"
+            done
+          else
+            echo "WARNING: icon.png not found. Using default icon."
+          fi
+
       - name: Build App (Unsigned)
         run: |
-          # We force the iOS version to 13.0 to fix the "libarclite" error
+          # Build with the new name and icon
           xcodebuild build \
             -scheme "WebView-iOS" \
             -configuration Release \
@@ -31,10 +58,10 @@ jobs:
           # Move the app into the Payload folder
           mv build/Build/Products/Release-iphoneos/*.app Payload/
           # Zip it into an IPA
-          zip -r "Safeschool.ipa" Payload
+          zip -r "VNMAP.ipa" Payload
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: Safeschool-IPA
-          path: Safeschool.ipa
+          name: VNMAP-IPA
+          path: VNMAP.ipa
